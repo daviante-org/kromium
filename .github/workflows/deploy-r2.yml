@@ -5,6 +5,7 @@ on:
       - main
     tags:
       - 'v*'
+      - '[0-9]+.*'
   workflow_dispatch:
     inputs:
       version:
@@ -22,7 +23,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   publish-to-r2:
@@ -31,12 +32,12 @@ jobs:
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v6
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
@@ -61,6 +62,8 @@ jobs:
             PUB_VERSION="${{ inputs.version }}"
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             PUB_VERSION="${GITHUB_REF_NAME#v}"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            PUB_VERSION="${GITHUB_REF_NAME}"
           else
             PUB_VERSION="0.1.0-SNAPSHOT"
           fi
@@ -145,3 +148,47 @@ jobs:
           }
           \`\`\`
           EOF
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Kromium ${{ steps.version_step.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          body: |
+            # 🚀 Kromium ${{ steps.version_step.outputs.version }}
+
+            Kromium is a modern, high-performance, developer-first Chromium browser engine for Kotlin and Java desktop applications, powered by native Off-Screen Rendering (OSR) and an extensible Service Provider Interface (SPI).
+
+            ### 📦 Published Artifacts (Cloudflare R2)
+            - `org.daviante.kromium:kromium-core:${{ steps.version_step.outputs.version }}`
+            - `org.daviante.kromium:kromium-api:${{ steps.version_step.outputs.version }}`
+            - `org.daviante.kromium:kromium-provider-jcef:${{ steps.version_step.outputs.version }}`
+            - `org.daviante.kromium:kromium-javafx:${{ steps.version_step.outputs.version }}`
+            - `org.daviante.kromium:kromium-swt:${{ steps.version_step.outputs.version }}`
+            - `org.daviante.kromium:kromium-swing:${{ steps.version_step.outputs.version }}`
+            - `org.daviante.kromium:kromium-awt:${{ steps.version_step.outputs.version }}`
+            - `org.daviante.kromium:kromium-compose:${{ steps.version_step.outputs.version }}`
+
+            ### 🛠️ How to Consume via Gradle
+            ```kotlin
+            repositories {
+                mavenCentral()
+                maven("https://repo.daviante.org/artifacts")
+            }
+
+            dependencies {
+                implementation("org.daviante.kromium:kromium-api:${{ steps.version_step.outputs.version }}")
+                // Add your UI framework canvas:
+                // implementation("org.daviante.kromium:kromium-compose:${{ steps.version_step.outputs.version }}")
+                // implementation("org.daviante.kromium:kromium-javafx:${{ steps.version_step.outputs.version }}")
+                // implementation("org.daviante.kromium:kromium-swing:${{ steps.version_step.outputs.version }}")
+                // implementation("org.daviante.kromium:kromium-swt:${{ steps.version_step.outputs.version }}")
+                // implementation("org.daviante.kromium:kromium-awt:${{ steps.version_step.outputs.version }}")
+            }
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
