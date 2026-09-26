@@ -1,0 +1,147 @@
+name: Deploy to Cloudflare R2
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g. 0.1.0, 1.0.0-RC1, or empty for automatic)'
+        required: false
+        default: ''
+      skip_tests:
+        description: 'Skip running tests prior to publishing'
+        type: boolean
+        required: false
+        default: false
+
+concurrency:
+  group: r2-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publish-to-r2:
+    name: Build & Publish to Cloudflare R2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Grant Execute Permission to Gradlew
+        run: chmod +x gradlew
+
+      - name: Run Test Suite
+        if: ${{ !inputs.skip_tests }}
+        run: |
+          if command -v xvfb-run > /dev/null; then
+            xvfb-run --auto-servernum ./gradlew check --no-daemon
+          else
+            ./gradlew check --no-daemon
+          fi
+
+      - name: Determine Publication Version
+        id: version_step
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            PUB_VERSION="${{ inputs.version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            PUB_VERSION="${GITHUB_REF_NAME#v}"
+          else
+            PUB_VERSION="0.1.0-SNAPSHOT"
+          fi
+          echo "version=${PUB_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Selected Publication Version: ${PUB_VERSION}"
+
+      - name: Build & Publish Artifacts to Local Staging
+        run: |
+          ./gradlew publish -Pversion=${{ steps.version_step.outputs.version }} --no-daemon
+
+      - name: Synchronize Artifacts to Cloudflare R2
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: 'auto'
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID || 'd181dcbe77bbb1e89a5cb5f88063d194' }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME || 'artifacts' }}
+          R2_PREFIX: ${{ secrets.R2_PREFIX || '' }}
+        run: |
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+            echo "::error::Missing required Cloudflare R2 credentials (R2_ACCESS_KEY_ID or R2_SECRET_ACCESS_KEY secrets)."
+            exit 1
+          fi
+
+          if [ -n "$R2_PREFIX" ]; then
+            TARGET_URI="s3://${R2_BUCKET_NAME}/${R2_PREFIX}"
+          else
+            TARGET_URI="s3://${R2_BUCKET_NAME}"
+          fi
+
+          ENDPOINT_URL="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+          echo "Uploading Maven repository from build/repo to ${TARGET_URI} via ${ENDPOINT_URL}..."
+
+          aws s3 sync build/repo "$TARGET_URI" \
+            --endpoint-url "$ENDPOINT_URL" \
+            --no-progress
+
+          echo "Successfully synchronized Kromium artifacts to Cloudflare R2!"
+
+      - name: Publish Summary to Job
+        run: |
+          VER="${{ steps.version_step.outputs.version }}"
+          REPO_URL="https://repo.daviante.org/artifacts"
+
+          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          # 🚀 Kromium Artifacts Deployed to Cloudflare R2
+
+          **Published Version**: \`${VER}\`  
+          **Repository Base URL**: [${REPO_URL}](${REPO_URL})  
+          **Cloudflare R2 Bucket**: \`artifacts\`
+
+          ---
+
+          ### 📦 Published Modules
+          - \`org.daviante.kromium:kromium-core:${VER}\`
+          - \`org.daviante.kromium:kromium-api:${VER}\`
+          - \`org.daviante.kromium:kromium-provider-jcef:${VER}\`
+          - \`org.daviante.kromium:kromium-javafx:${VER}\`
+          - \`org.daviante.kromium:kromium-swt:${VER}\`
+          - \`org.daviante.kromium:kromium-swing:${VER}\`
+          - \`org.daviante.kromium:kromium-awt:${VER}\`
+          - \`org.daviante.kromium:kromium-compose:${VER}\`
+
+          ---
+
+          ### 🛠️ How to Consume in Gradle
+
+          #### 1. Add Repository
+          \`\`\`kotlin
+          // settings.gradle.kts or build.gradle.kts
+          repositories {
+              mavenCentral()
+              maven("${REPO_URL}")
+          }
+          \`\`\`
+
+          #### 2. Add Dependencies
+          \`\`\`kotlin
+          dependencies {
+              implementation("org.daviante.kromium:kromium-javafx:${VER}")
+              // or kromium-swt, kromium-swing, kromium-compose
+          }
+          \`\`\`
+          EOF
