@@ -1,0 +1,89 @@
+name: Feature Request
+description: Propose an enhancement, new API, or architectural feature for Kromium.
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping make Kromium better! Please describe the use case, motivation, and conceptual API design for your feature proposal.
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Target Module / Component
+      description: Which part of Kromium would this feature impact?
+      options:
+        - "kromium-api (Public Interfaces, Facade, Config, Events)"
+        - "kromium-provider-jcef (Native OSR Pipeline / Engine Implementation)"
+        - "kromium-compose (Compose Multiplatform Integration)"
+        - "kromium-swing (Swing Integration)"
+        - "kromium-javafx (JavaFX Integration)"
+        - "kromium-swt (SWT Integration)"
+        - "kromium-awt (AWT Integration)"
+        - "Automation & Web Scraping Engine"
+        - "Network, Proxy & Custom Schemes"
+        - "DevTools, Diagnostics & Logging"
+        - "Cross-cutting / Architecture"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a specific limitation or pain point?
+      placeholder: "I am unable to / It is difficult to accomplish..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution / Feature Description
+      description: Describe what you would like Kromium to do and how the feature should behave.
+      placeholder: "Provide a detailed explanation of the desired feature and its behavior..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: api_concept
+    attributes:
+      label: Proposed API Concept / Usage Example
+      description: Provide a mock code snippet demonstrating how the developer API would look and feel.
+      render: kotlin
+      placeholder: |
+        // Example proposed Kotlin API usage:
+        val browser = client.createBrowser("https://example.com")
+        // ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: What workarounds or alternative approaches have you evaluated?
+      placeholder: "Describe other approaches or libraries considered..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Add any relevant links, Chromium/CEF references, specifications, or mockups.
+      placeholder: "Any additional background context, upstream CEF references, etc."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Proposal Checklist
+      options:
+        - label: I have searched existing issues and PRs to verify this feature hasn't already been proposed.
+          required: true
+        - label: I understand that Kromium strictly enforces zero native CEF types leaking into the public `kromium-api` surface.
+          required: true

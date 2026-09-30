@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Security Vulnerability Report
+    url: https://github.com/daviante-org/kromium/security/advisories/new
+    about: Report security vulnerabilities confidentially to the maintainers. Do not open public issues for security concerns.
+  - name: 📖 Documentation & Architecture Guides
+    url: https://github.com/daviante-org/kromium/tree/stable/docs
+    about: Read comprehensive guides, quickstarts, and module architecture manuals.
+  - name: 💬 GitHub Discussions & General Q&A
+    url: https://github.com/daviante-org/kromium/discussions
+    about: Ask implementation questions, discuss architecture, or seek help integrating Kromium into your desktop app.

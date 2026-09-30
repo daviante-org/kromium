@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ stable, main ]
+  push:
+    branches: [ stable, main ]
+
+jobs:
+  build:
+    name: Gradle Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+      - name: Grant Execute Permission
+        run: chmod +x gradlew
+      - name: Assemble Project
+        run: ./gradlew assemble --no-daemon
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+      - name: Grant Execute Permission
+        run: chmod +x gradlew
+      - name: Run Test Suite with Xvfb
+        run: |
+          if command -v xvfb-run > /dev/null; then
+            xvfb-run --auto-servernum ./gradlew check --no-daemon
+          else
+            ./gradlew check --no-daemon
+          fi

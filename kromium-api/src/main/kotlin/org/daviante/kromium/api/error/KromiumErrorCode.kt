@@ -1,0 +1,25 @@
+package org.daviante.kromium.api.error
+
+/**
+ * Standardized error codes for programmatic recovery and telemetry.
+ */
+enum class KromiumErrorCode {
+    INITIALIZATION_ERROR,
+    UNSUPPORTED_PLATFORM,
+    INSTALLATION_FAILED,
+    DOWNLOAD_DISABLED,
+    NO_BUNDLE_AVAILABLE,
+    DOWNLOAD_FAILED,
+    CHECKSUM_MISMATCH,
+    EXTRACTION_FAILED,
+    MALICIOUS_ARCHIVE,
+    BOOTSTRAP_FAILED,
+    INSTALLATION_CORRUPTED,
+    JS_TIMEOUT,
+    INVALID_CONFIG,
+    PROXY_ERROR,
+    PDF_PRINT_FAILED,
+    FRAMEWORK_REQUIRED,
+    CANVAS_NOT_AVAILABLE,
+    UNKNOWN
+}

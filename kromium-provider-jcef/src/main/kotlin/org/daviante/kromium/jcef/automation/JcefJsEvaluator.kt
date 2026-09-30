@@ -1,0 +1,269 @@
+package org.daviante.kromium.jcef.automation
+
+import org.daviante.kromium.core.logging.KromiumLogger
+import org.daviante.kromium.core.util.KromiumFutureBridge
+import org.daviante.kromium.api.error.KromiumException
+
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import org.cef.browser.CefBrowser
+import org.cef.browser.CefFrame
+import org.cef.callback.CefQueryCallback
+import org.cef.handler.CefMessageRouterHandlerAdapter
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.CompletableFuture
+import kotlin.coroutines.resume
+
+private const val TAG = "JcefJsEvaluator"
+
+object JcefJsEvaluator {
+
+    /**
+     * Default timeout for JavaScript evaluation in milliseconds.
+     * Can be overridden per-call via the [timeoutMs] parameter in [evaluate].
+     */
+    @Volatile var defaultTimeoutMs: Long = 10_000L
+
+    /**
+     * Default timeout in milliseconds to wait for CEF's CefMessageRouter query function
+     * (e.g. window.kromiumQuery) to bind to the V8 context before failing.
+     * Defaults to 3,000ms.
+     */
+    @Volatile var defaultRouterBindingTimeoutMs: Long = 3_000L
+
+    /**
+     * Polling interval in milliseconds between router query binding checks.
+     * Defaults to 50ms.
+     */
+    @Volatile var defaultRouterBindingIntervalMs: Long = 50L
+
+    /**
+     * Converts a Kotlin string into a valid, safe JavaScript string literal (including quotes).
+     */
+    private fun toJsStringLiteral(value: String): String {
+        val sb = StringBuilder(value.length + 16)
+        sb.append('"')
+        for (ch in value) {
+            when (ch) {
+                '\\' -> sb.append("\\\\")
+                '"' -> sb.append("\\\"")
+                '\n' -> sb.append("\\n")
+                '\r' -> sb.append("\\r")
+                '\t' -> sb.append("\\t")
+                '\b' -> sb.append("\\b")
+                '\u000C' -> sb.append("\\f")
+                '\u2028' -> sb.append("\\u2028")
+                '\u2029' -> sb.append("\\u2029")
+                else -> {
+                    if (ch < ' ') {
+                        sb.append("\\u").append(ch.code.toString(16).padStart(4, '0'))
+                    } else {
+                        sb.append(ch)
+                    }
+                }
+            }
+        }
+        sb.append('"')
+        return sb.toString()
+    }
+
+    /**
+     * Wraps a JavaScript expression or script so that its evaluation result (or error)
+     * is captured, stringified, and asynchronously sent back through the CEF message router.
+     *
+     * Supports:
+     * - Expressions (`document.title`, `1 + 1`, `document.documentElement.outerHTML`)
+     * - Multi-statement blocks (`var a = 1; var b = 2; a + b;`)
+     * - Code with top-level `return` statements (`var x = 1; return x * 2;`)
+     * - Promises / thenables (automatically awaited)
+     * - Objects and JSON structures (automatically serialized via `JSON.stringify`)
+     *
+     * The queryId is strictly validated to contain only alphanumeric characters and underscores.
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun wrapExpression(
+        expression: String,
+        queryId: String,
+        routerQueryName: String = "kromiumQuery",
+        bindingTimeoutMs: Long = defaultRouterBindingTimeoutMs,
+        bindingIntervalMs: Long = defaultRouterBindingIntervalMs
+    ): String {
+        // Validate queryId contains only safe characters (alphanumeric + underscore)
+        require(queryId.matches(Regex("^[a-zA-Z0-9_]+$"))) {
+            "queryId must contain only alphanumeric characters and underscores, got: $queryId"
+        }
+
+        val safeInterval = bindingIntervalMs.coerceAtLeast(10L)
+        val maxAttempts = (bindingTimeoutMs / safeInterval).coerceAtLeast(1L)
+
+        // Escape backslashes first, then single quotes for safe embedding in JS string literal
+        val safeQueryId = queryId.replace("\\", "\\\\").replace("'", "\\'")
+
+        val trimmed = expression.trim()
+        val isParenWrapped = trimmed.startsWith("(") && (trimmed.endsWith(")") || trimmed.endsWith(");"))
+        val statementStarts = listOf("var ", "let ", "const ", "if ", "if(", "for ", "for(", "while ", "while(", "try ", "try{", "switch ", "switch(")
+        val isStatement = statementStarts.any { trimmed.startsWith(it) }
+        val isReturn = trimmed.startsWith("return ") || trimmed.startsWith("return\n") || trimmed == "return"
+
+        val inlinedExecution = if (isParenWrapped) {
+            "return (\n" + trimmed.trimEnd(';') + "\n);"
+        } else if (isStatement || isReturn) {
+            expression
+        } else {
+            "return (\n" + trimmed.trimEnd(';') + "\n);"
+        }
+
+        return """
+            (function() {
+                var __attempts = 0;
+                var __maxAttempts = $maxAttempts;
+                var __interval = $safeInterval;
+                function __exec() {
+                    var fn = (typeof window.$routerQueryName === 'function') ? window.$routerQueryName : null;
+                    if (!fn) {
+                        if (__attempts++ < __maxAttempts) {
+                            setTimeout(__exec, __interval);
+                        }
+                        return;
+                    }
+                    function __send(payload) {
+                        try {
+                            fn({
+                                request: '$safeQueryId:::' + payload,
+                                onSuccess: function() {},
+                                onFailure: function() {}
+                            });
+                        } catch(_) {}
+                    }
+                    function __format(res) {
+                        if (res === undefined || res === null) return '';
+                        if (typeof res === 'object') {
+                            try { return JSON.stringify(res); } catch(_) { return String(res); }
+                        }
+                        return String(res);
+                    }
+                    try {
+                        var __result = (function() {
+                            $inlinedExecution
+                        })();
+                        if (__result && typeof __result.then === 'function') {
+                            Promise.resolve(__result).then(function(__val) {
+                                __send(__format(__val));
+                            }).catch(function(__err) {
+                                __send('ERROR: ' + (__err ? (__err.message || String(__err)) : 'Unknown error'));
+                            });
+                        } else {
+                            __send(__format(__result));
+                        }
+                    } catch(e) {
+                        __send('ERROR: ' + (e ? (e.message || String(e)) : 'Unknown error'));
+                    }
+                }
+                __exec();
+            })();
+        """.trimIndent()
+    }
+
+    /**
+     * Evaluates a JavaScript expression in the browser and returns the result as a string.
+     *
+     * Uses [suspendCancellableCoroutine] to properly handle cancellation and prevent leaks.
+     * If the evaluation doesn't complete within [timeoutMs], returns `null` and cleans up
+     * the pending callback to prevent memory leaks.
+     *
+     * **Security note**: The [expression] parameter is injected directly into JavaScript.
+     * Never pass untrusted user input without proper sanitization.
+     *
+     * @param browser The CEF browser to evaluate in
+     * @param handler The JS message router handler
+     * @param expression Raw JavaScript expression to evaluate
+     * @param routerQueryName The message router query function name
+     * @param timeoutMs Maximum time to wait for the result, or `null` for [defaultTimeoutMs]
+     * @return The evaluation result as a string, or `null` if timed out
+     * @throws KromiumException.JsEvaluationTimeout if [throwOnTimeout] is `true` and evaluation times out
+     */
+    @JvmStatic
+    @JvmOverloads
+    suspend fun evaluate(
+        browser: CefBrowser,
+        handler: JcefJsHandler,
+        expression: String,
+        routerQueryName: String = "kromiumQuery",
+        timeoutMs: Long? = null,
+        throwOnTimeout: Boolean = false,
+        bindingTimeoutMs: Long? = null,
+        bindingIntervalMs: Long? = null
+    ): String? {
+        val effectiveTimeout = timeoutMs ?: defaultTimeoutMs
+        val effectiveBindingTimeout = bindingTimeoutMs ?: defaultRouterBindingTimeoutMs
+        val effectiveBindingInterval = bindingIntervalMs ?: defaultRouterBindingIntervalMs
+
+        val result = withTimeoutOrNull(effectiveTimeout) {
+            suspendCancellableCoroutine { continuation ->
+                val queryId = handler.nextQueryId()
+
+                // Register cleanup on cancellation to prevent memory leaks
+                continuation.invokeOnCancellation {
+                    handler.removePending(queryId)
+                    KromiumLogger.d(TAG, "JS evaluation cancelled, cleaned up query: $queryId")
+                }
+
+                handler.registerPending(queryId) { result ->
+                    if (continuation.isActive) {
+                        continuation.resume(result)
+                    }
+                }
+
+                val wrappedScript = wrapExpression(
+                    expression,
+                    queryId,
+                    routerQueryName,
+                    effectiveBindingTimeout,
+                    effectiveBindingInterval
+                )
+                browser.executeJavaScript(wrappedScript, browser.url ?: "", 0)
+            }
+        }
+
+        if (result == null && throwOnTimeout) {
+            throw KromiumException.JsEvaluationTimeout(effectiveTimeout)
+        }
+
+        if (result == null) {
+            KromiumLogger.w(TAG, "JS evaluation timed out after ${effectiveTimeout}ms")
+        }
+
+        return result
+    }
+
+    /**
+     * Evaluates JavaScript asynchronously returning a Java [CompletableFuture].
+     * Provides 100% idiomatic non-blocking execution for Java callers.
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun evaluateAsync(
+        browser: CefBrowser,
+        handler: JcefJsHandler,
+        expression: String,
+        routerQueryName: String = "kromiumQuery",
+        timeoutMs: Long? = null,
+        throwOnTimeout: Boolean = false,
+        bindingTimeoutMs: Long? = null,
+        bindingIntervalMs: Long? = null
+    ): CompletableFuture<String?> =
+        KromiumFutureBridge.toCompletableFuture {
+            evaluate(
+                browser,
+                handler,
+                expression,
+                routerQueryName,
+                timeoutMs,
+                throwOnTimeout,
+                bindingTimeoutMs,
+                bindingIntervalMs
+            )
+        }
+}
