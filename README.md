@@ -143,9 +143,11 @@ Comprehensive guides and API reference manuals are located in [`docs/`](docs/):
 
 ---
 
-## License & Copyright
+## License & Security
 
 Kromium is open-source software licensed under the [Apache License, Version 2.0](LICENSE).  
 Copyright © 2025–2026 [Daviante Group](https://github.com/daviantegroup). All rights reserved.
 
-All external contributions are governed by our [Contributor License Agreement (CLA)](CONTRIBUTING.md).
+- **Contributing:** All external contributions are governed by our [Contributing Guidelines & Contributor License Agreement (CLA)](CONTRIBUTING.md).
+- **Security:** To report security vulnerabilities responsibly, please review our [Security Policy](SECURITY.md).
+

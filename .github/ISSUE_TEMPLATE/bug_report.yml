@@ -1,0 +1,137 @@
+name: Bug Report
+description: Report a bug, crash, or unexpected behavior in Kromium.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to report an issue!
+        
+        > [!IMPORTANT]
+        > If you believe you have discovered a **security vulnerability**, please **do not** submit it publicly here. Instead, follow our [Security Policy](https://github.com/daviante-org/kromium/blob/stable/SECURITY.md) and submit a private report via [GitHub Security Advisories](https://github.com/daviante-org/kromium/security/advisories/new).
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Affected Module / Component
+      description: Which part of Kromium is experiencing the issue?
+      options:
+        - "kromium-api (Public API / Facade)"
+        - "kromium-provider-jcef (CEF Native Runtime / OSR Pipeline / Engine)"
+        - "kromium-compose (Compose Multiplatform KromiumView)"
+        - "kromium-swing (Swing JPanel Canvas)"
+        - "kromium-javafx (JavaFX StackPane Canvas)"
+        - "kromium-swt (Eclipse SWT Canvas)"
+        - "kromium-awt (Pure AWT Canvas)"
+        - "kromium-core (Utilities / Architecture Helpers)"
+        - "samples (Sample Applications)"
+        - "Build / CI / Publishing"
+        - "Documentation"
+        - "Other"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Kromium Version
+      description: What version of Kromium are you running?
+      placeholder: "e.g., 0.1.0-SNAPSHOT, commit SHA"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System & Architecture
+      description: Which operating system and hardware architecture are you using?
+      options:
+        - "Windows 11 (x86_64)"
+        - "Windows 11 (ARM64)"
+        - "Windows 10 (x86_64)"
+        - "macOS (Apple Silicon - aarch64)"
+        - "macOS (Intel - x86_64)"
+        - "Linux (Ubuntu / Debian x86_64)"
+        - "Linux (Ubuntu / Debian ARM64)"
+        - "Linux (Fedora / Arch / RHEL)"
+        - "Other (specify in description)"
+    validations:
+      required: true
+
+  - type: input
+    id: jdk
+    attributes:
+      label: JDK Distribution & Version
+      description: Output of `java -version`
+      placeholder: "e.g., Eclipse Temurin 21.0.2+13, JetBrains Runtime 17.0.10"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Current Behavior
+      description: A clear and concise description of what happened.
+      placeholder: "Describe the bug and the unexpected behavior encountered..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: "Describe what the engine or UI component should have done..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Clear steps to reproduce the behavior.
+      placeholder: |
+        1. Initialize Kromium engine with configuration ...
+        2. Create browser and attach to canvas ...
+        3. Navigate to URL '...'
+        4. Trigger action ...
+        5. Observe crash / error / rendering artifact.
+    validations:
+      required: true
+
+  - type: textarea
+    id: code_snippet
+    attributes:
+      label: Minimal Reproducible Example
+      description: Provide a minimal, self-contained Kotlin or Java snippet demonstrating the issue.
+      render: kotlin
+      placeholder: |
+        val config = KromiumConfig.builder().build()
+        val engine = JcefProvider.createEngine(config)
+        engine.initialize()
+        // ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console Logs / Stack Trace / DevTools Output
+      description: Paste any terminal output, Java stack traces, or Chromium console messages.
+      render: shell
+      placeholder: "Paste relevant exception logs or stack traces here..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have searched existing issues and verified that this bug is not a duplicate.
+          required: true
+        - label: I have confirmed that this is not a security vulnerability (see [SECURITY.md](https://github.com/daviante-org/kromium/blob/stable/SECURITY.md)).
+          required: true
+        - label: I have provided a complete description and sufficient steps to reproduce the issue.
+          required: true
