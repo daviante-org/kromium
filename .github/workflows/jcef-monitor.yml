@@ -1,0 +1,86 @@
+name: JCEF Upstream Monitor
+
+on:
+  schedule:
+    # Run once daily at 06:00 UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check-upstream-jcef:
+    name: Check Upstream JCEF Releases
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check Upstream JCEF Releases
+        id: check_step
+        run: python scripts/check_jcef_releases.py
+
+      - name: Notify Maintainer via GitHub Issue
+        if: steps.check_step.outputs.update_available == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          LATEST_VER: ${{ steps.check_step.outputs.latest_version }}
+          CURRENT_VER: ${{ steps.check_step.outputs.current_version }}
+          CHROMIUM_VER: ${{ steps.check_step.outputs.chromium_version }}
+          JAR_URL: ${{ steps.check_step.outputs.jar_url }}
+        run: |
+          # Check for existing open issue to avoid duplicates
+          EXISTING_ISSUE=$(gh issue list --search "$LATEST_VER in:title" --state open --json number --jq '.[0].number')
+          
+          if [ -n "$EXISTING_ISSUE" ]; then
+            echo "An open issue (#$EXISTING_ISSUE) for version $LATEST_VER already exists. Skipping duplicate creation."
+            exit 0
+          fi
+
+          ISSUE_TITLE="🚀 New Upstream JCEF Release Detected: ${LATEST_VER}"
+          
+          read -r -d '' ISSUE_BODY <<EOF || true
+          ## 🚀 New Upstream JCEF Stable Release Detected!
+
+          A new stable production release of **JCEF** has been published to the JetBrains dependencies repository.
+
+          ---
+
+          ### 📋 Release Summary
+          - **Upstream Version**: \`${LATEST_VER}\`
+          - **Chromium Milestone**: \`${CHROMIUM_VER}\`
+          - **Currently Bundled in Kromium**: \`${CURRENT_VER}\`
+          - **Direct Artifact Download**: [jcef-${LATEST_VER}.jar](${JAR_URL})
+
+          ---
+
+          ### 🛠️ Upgrade Instructions
+          1. Download the new \`jcef-${LATEST_VER}.jar\` to \`kromium-provider-jcef/libs/jcef.jar\`:
+             \`\`\`bash
+             curl -L "${JAR_URL}" -o kromium-provider-jcef/libs/jcef.jar
+             \`\`\`
+          2. Update \`JcefVersionConstants.kt\` with the new version identifiers.
+          3. Run tests:
+             \`\`\`bash
+             ./gradlew check
+             \`\`\`
+          4. Tag and publish the new release!
+
+          ---
+          *Automated notification by [JCEF Upstream Monitor](https://github.com/${GITHUB_REPOSITORY}/actions/workflows/jcef-monitor.yml)*
+          EOF
+
+          echo "Opening GitHub Issue for $LATEST_VER assigned to @iamdavianrathod..."
+          gh issue create \
+            --title "$ISSUE_TITLE" \
+            --body "$ISSUE_BODY" \
+            --assignee "iamdavianrathod" \
+            --label "dependencies"
