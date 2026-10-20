@@ -30,12 +30,12 @@ jobs:
           path: ~/.gradle/caches
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
           restore-keys: ${{ runner.os }}-gradle
-      - name: Build, test and analyze
+      - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           if command -v xvfb-run > /dev/null; then
-            xvfb-run --auto-servernum ./gradlew build jacocoTestReport sonar --info
+            xvfb-run --auto-servernum ./gradlew build sonar --info
           else
-            ./gradlew build jacocoTestReport sonar --info
+            ./gradlew build sonar --info
           fi

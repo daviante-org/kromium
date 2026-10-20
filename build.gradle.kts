@@ -40,20 +40,6 @@ subprojects {
             }
         }
     } else {
-        apply(plugin = "jacoco")
-
-        tasks.withType<Test> {
-            finalizedBy("jacocoTestReport")
-        }
-
-        tasks.withType<JacocoReport> {
-            reports {
-                xml.required.set(true)
-                html.required.set(false)
-                csv.required.set(false)
-            }
-        }
-
         apply(plugin = "maven-publish")
 
         configure<PublishingExtension> {
@@ -66,6 +52,20 @@ subprojects {
         }
 
         plugins.withId("org.jetbrains.kotlin.jvm") {
+            apply(plugin = "jacoco")
+
+            tasks.withType<Test> {
+                finalizedBy(tasks.matching { it.name == "jacocoTestReport" })
+            }
+
+            tasks.withType<JacocoReport> {
+                reports {
+                    xml.required.set(true)
+                    html.required.set(false)
+                    csv.required.set(false)
+                }
+            }
+
             configure<JavaPluginExtension> {
                 withSourcesJar()
             }
