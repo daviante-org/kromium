@@ -4,6 +4,15 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.compose.multiplatform) apply false
     alias(libs.plugins.compose.compiler) apply false
+    id("org.sonarqube") version "7.5.0.8588"
+}
+
+sonar {
+    properties {
+        property("sonar.projectKey", "daviante-org_kromium")
+        property("sonar.organization", "daviante-org")
+        property("sonar.exclusions", "**/samples/**/resources/*.css")
+    }
 }
 
 allprojects {

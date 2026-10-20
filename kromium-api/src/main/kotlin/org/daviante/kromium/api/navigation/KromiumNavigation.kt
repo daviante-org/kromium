@@ -57,9 +57,9 @@ interface KromiumNavigation {
     /**
      * Loads raw HTML content directly into the browser.
      * @param html The raw HTML string.
-     * @param url A dummy URL to use as the origin/base (default is "http://kromium.local/").
+     * @param url A dummy URL to use as the origin/base (default is "https://kromium.local/").
      */
-    fun loadHtml(html: String, url: String = "http://kromium.local/")
+    fun loadHtml(html: String, url: String = "https://kromium.local/")
 
     /** Navigates backwards in the history, if possible. */
     fun goBack()
