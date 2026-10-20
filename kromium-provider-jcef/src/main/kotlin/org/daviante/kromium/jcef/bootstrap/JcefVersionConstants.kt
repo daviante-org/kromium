@@ -5,7 +5,7 @@ package org.daviante.kromium.jcef.bootstrap
  * The provider relies on these exact versions for its bundled native libraries and jar files.
  */
 internal object JcefVersionConstants {
-    const val JCEF_VERSION = "150.0.14"
-    const val CEF_VERSION = "150.0.14+g7c1aa68+chromium-150.0.7871.129"
-    const val CHROMIUM_VERSION = "150.0.7871.129"
+    const val JCEF_VERSION = "150.0.22"
+    const val CEF_VERSION = "150.0.22+gc1a097e+chromium-150.0.7871.256"
+    const val CHROMIUM_VERSION = "150.0.7871.256"
 }
