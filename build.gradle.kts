@@ -11,7 +11,7 @@ sonar {
     properties {
         property("sonar.projectKey", "daviante-org_kromium")
         property("sonar.organization", "daviante-org")
-        property("sonar.exclusions", "**/samples/**/resources/*.css")
+        property("sonar.coverage.jacoco.xmlReportPaths", "**/build/reports/jacoco/test/jacocoTestReport.xml")
     }
 }
 
@@ -27,7 +27,27 @@ allprojects {
 
 subprojects {
     val subproject = this
-    if (!subproject.path.startsWith(":samples")) {
+    if (subproject.path.startsWith(":samples")) {
+        plugins.withId("org.sonarqube") {
+            configure<org.sonarqube.gradle.SonarExtension> {
+                isSkipProject = true
+            }
+        }
+    } else {
+        apply(plugin = "jacoco")
+
+        tasks.withType<Test> {
+            finalizedBy("jacocoTestReport")
+        }
+
+        tasks.withType<JacocoReport> {
+            reports {
+                xml.required.set(true)
+                html.required.set(false)
+                csv.required.set(false)
+            }
+        }
+
         apply(plugin = "maven-publish")
 
         configure<PublishingExtension> {
