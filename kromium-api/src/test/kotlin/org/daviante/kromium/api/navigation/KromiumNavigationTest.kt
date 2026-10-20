@@ -18,7 +18,7 @@ class KromiumNavigationTest {
         var reloadCalled = false
         var stopCalled = false
 
-        private val _state = MutableStateFlow(KromiumNavigationState.Initial)
+        private val _state = MutableStateFlow(KromiumNavigationState())
         override val navigationState: StateFlow<KromiumNavigationState> = _state
 
         override suspend fun loadUrl(url: String, waitUntil: NavigationStage, timeoutMs: Long): Boolean {

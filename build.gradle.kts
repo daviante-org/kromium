@@ -28,9 +28,15 @@ allprojects {
 subprojects {
     val subproject = this
     if (subproject.path.startsWith(":samples")) {
-        plugins.withId("org.sonarqube") {
-            configure<org.sonarqube.gradle.SonarExtension> {
-                isSkipProject = true
+        afterEvaluate {
+            extensions.findByName("sonar")?.let { ext ->
+                try {
+                    ext::class.java.getMethod("setSkipProject", Boolean::class.javaPrimitiveType).invoke(ext, true)
+                } catch (_: Throwable) {
+                    try {
+                        ext::class.java.getMethod("setIsSkipProject", Boolean::class.javaPrimitiveType).invoke(ext, true)
+                    } catch (_: Throwable) {}
+                }
             }
         }
     } else {
