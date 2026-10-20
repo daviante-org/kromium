@@ -159,7 +159,7 @@ class AwtAppShell(
         addBookmark("GitHub", "https://github.com/daviante-org/kromium")
         addBookmark("Wikipedia", "https://www.wikipedia.org")
         addBookmark("WebGL Aquarium", "https://webglsamples.org/aquarium/aquarium.html")
-        addBookmark("Acid3 Compliance", "http://acid3.acidtests.org/")
+        addBookmark("Acid3 Compliance", "https://acid3.acidtests.org/")
 
         topContainer.add(bookmarksBar, BorderLayout.SOUTH)
         add(topContainer, BorderLayout.NORTH)

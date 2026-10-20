@@ -199,7 +199,7 @@ fun SampleAppShell(
                     "GitHub" to "https://github.com/daviante-org/kromium",
                     "Wikipedia" to "https://www.wikipedia.org",
                     "WebGL Aquarium" to "https://webglsamples.org/aquarium/aquarium.html",
-                    "Acid3" to "http://acid3.acidtests.org/"
+                    "Acid3" to "https://acid3.acidtests.org/"
                 ).forEach { (domain, url) ->
                     OutlinedButton(
                         onClick = { navigateTo(url) },

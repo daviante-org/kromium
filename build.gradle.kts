@@ -4,6 +4,15 @@ plugins {
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.compose.multiplatform) apply false
     alias(libs.plugins.compose.compiler) apply false
+    id("org.sonarqube") version "7.5.0.8588"
+}
+
+sonar {
+    properties {
+        property("sonar.projectKey", "daviante-org_kromium")
+        property("sonar.organization", "daviante-org")
+        property("sonar.coverage.jacoco.xmlReportPaths", "**/build/reports/jacoco/test/jacocoTestReport.xml")
+    }
 }
 
 allprojects {
@@ -18,7 +27,19 @@ allprojects {
 
 subprojects {
     val subproject = this
-    if (!subproject.path.startsWith(":samples")) {
+    if (subproject.path.startsWith(":samples")) {
+        afterEvaluate {
+            extensions.findByName("sonar")?.let { ext ->
+                try {
+                    ext::class.java.getMethod("setSkipProject", Boolean::class.javaPrimitiveType).invoke(ext, true)
+                } catch (_: Throwable) {
+                    try {
+                        ext::class.java.getMethod("setIsSkipProject", Boolean::class.javaPrimitiveType).invoke(ext, true)
+                    } catch (_: Throwable) {}
+                }
+            }
+        }
+    } else {
         apply(plugin = "maven-publish")
 
         configure<PublishingExtension> {
@@ -31,6 +52,20 @@ subprojects {
         }
 
         plugins.withId("org.jetbrains.kotlin.jvm") {
+            apply(plugin = "jacoco")
+
+            tasks.withType<Test> {
+                finalizedBy(tasks.matching { it.name == "jacocoTestReport" })
+            }
+
+            tasks.withType<JacocoReport> {
+                reports {
+                    xml.required.set(true)
+                    html.required.set(false)
+                    csv.required.set(false)
+                }
+            }
+
             configure<JavaPluginExtension> {
                 withSourcesJar()
             }

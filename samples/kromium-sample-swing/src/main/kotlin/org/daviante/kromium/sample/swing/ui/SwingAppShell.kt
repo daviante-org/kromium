@@ -147,7 +147,7 @@ class SwingAppShell(
             "GitHub" to "https://github.com/daviante-org/kromium",
             "Wikipedia" to "https://www.wikipedia.org",
             "WebGL Aquarium" to "https://webglsamples.org/aquarium/aquarium.html",
-            "Acid3" to "http://acid3.acidtests.org/"
+            "Acid3" to "https://acid3.acidtests.org/"
         ).forEach { (label, url) ->
             val presetBtn = KromiumButton(label, fontSize = 11f)
             presetBtn.preferredSize = Dimension(presetBtn.preferredSize.width, 34)
