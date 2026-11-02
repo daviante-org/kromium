@@ -8,5 +8,5 @@ internal object JcefVersionConstants {
     const val JCEF_VERSION = "150.0.14"
     const val CEF_VERSION = "150.0.14+g7c1aa68+chromium-150.0.7871.129"
     const val CHROMIUM_VERSION = "150.0.7871.129"
-    const val BUILD_METADATA = "api-1.21-263-b16"
+    const val BUILD_METADATA = "api-1.21-263-b18"
 }
