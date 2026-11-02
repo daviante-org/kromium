@@ -8,7 +8,7 @@ import java.io.File
 object JcefEngineRegistry {
 
     private const val LOCK_FILE_NAME = "install.lock"
-    const val DEFAULT_ENGINE_FOLDER = "jcef-150-b11"
+    const val DEFAULT_ENGINE_FOLDER = "jcef-150-b18"
 
     @JvmStatic
     fun defaultInstallDir(): File {
